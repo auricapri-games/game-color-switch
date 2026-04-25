@@ -1,0 +1,36 @@
+name: game_color_switch
+description: "Color Switch — auricapri-games"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+  flutter: '>=3.19.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  shared_preferences: ^2.3.2
+  google_mobile_ads: ^5.2.0
+  google_fonts: ^6.2.0
+  auricapri_engine:
+    git:
+      url: https://github.com/auricapri-games/engine.git
+      ref: main
+  auricapri_games_common:
+    path: /home/auricapri/auricapri-games-common
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  custom_lint: ^0.6.4
+  very_good_analysis: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/sprites/
