@@ -6,11 +6,10 @@ enum SwitchColor { red, blue, green, yellow }
 
 /// Immutable per-tick game state.
 ///
-/// Each ring in [ringQueue] is a [SwitchColor]; the ball passes a ring only
-/// when the ball's current color matches that ring's color. After a
-/// successful pass the ring is removed from the head of the queue and the
-/// next ring is presented; the ball is recolored to a new random color (the
-/// generator pre-computes the color stream for determinism).
+/// Each ring is a rotating palette. The currently visible color of the
+/// head ring is `ringPalette[rotationIndex % ringPalette.length]`. The
+/// ball passes only when the visible color equals [ballColor] at the
+/// moment the player taps.
 @immutable
 class ColorSwitchState extends engine.GameState {
   const ColorSwitchState({
@@ -20,7 +19,8 @@ class ColorSwitchState extends engine.GameState {
     required super.isOver,
     required super.isWon,
     required this.ballColor,
-    required this.ringQueue,
+    required this.ringPalettes,
+    required this.rotationIndex,
     required this.nextBallStream,
     required this.targetScore,
   });
@@ -28,19 +28,27 @@ class ColorSwitchState extends engine.GameState {
   /// Current color of the player-controlled ball.
   final SwitchColor ballColor;
 
-  /// FIFO queue of upcoming ring colors. Head = ring under the ball now.
-  final List<SwitchColor> ringQueue;
+  /// Per-ring rotating palettes. Head = current ring under the ball.
+  final List<List<SwitchColor>> ringPalettes;
 
   /// Pre-shuffled stream of next ball colors after each successful pass.
-  /// Drawn one per pass; deterministic for a given seed.
   final List<SwitchColor> nextBallStream;
+
+  /// Visible-sector index inside the head ring's palette.
+  final int rotationIndex;
 
   /// Score required to clear the current phase.
   final int targetScore;
 
-  /// Color of the active (passable) ring — null when board is exhausted.
-  SwitchColor? get currentRingColor =>
-      ringQueue.isEmpty ? null : ringQueue.first;
+  /// Color currently visible (the one a tap would commit to).
+  SwitchColor? get visibleRingColor {
+    if (ringPalettes.isEmpty) return null;
+    final head = ringPalettes.first;
+    if (head.isEmpty) return null;
+    return head[rotationIndex % head.length];
+  }
+
+  int get ringsRemaining => ringPalettes.length;
 
   ColorSwitchState copyWith({
     int? phase,
@@ -49,8 +57,9 @@ class ColorSwitchState extends engine.GameState {
     bool? isOver,
     bool? isWon,
     SwitchColor? ballColor,
-    List<SwitchColor>? ringQueue,
+    List<List<SwitchColor>>? ringPalettes,
     List<SwitchColor>? nextBallStream,
+    int? rotationIndex,
     int? targetScore,
   }) =>
       ColorSwitchState(
@@ -60,8 +69,9 @@ class ColorSwitchState extends engine.GameState {
         isOver: isOver ?? this.isOver,
         isWon: isWon ?? this.isWon,
         ballColor: ballColor ?? this.ballColor,
-        ringQueue: ringQueue ?? this.ringQueue,
+        ringPalettes: ringPalettes ?? this.ringPalettes,
         nextBallStream: nextBallStream ?? this.nextBallStream,
+        rotationIndex: rotationIndex ?? this.rotationIndex,
         targetScore: targetScore ?? this.targetScore,
       );
 
@@ -76,7 +86,8 @@ class ColorSwitchState extends engine.GameState {
         other.isWon == isWon &&
         other.ballColor == ballColor &&
         other.targetScore == targetScore &&
-        _listEq(other.ringQueue, ringQueue) &&
+        other.rotationIndex == rotationIndex &&
+        _palettesEq(other.ringPalettes, ringPalettes) &&
         _listEq(other.nextBallStream, nextBallStream);
   }
 
@@ -89,7 +100,8 @@ class ColorSwitchState extends engine.GameState {
         isWon,
         ballColor,
         targetScore,
-        Object.hashAll(ringQueue),
+        rotationIndex,
+        ringPalettes.length,
         Object.hashAll(nextBallStream),
       );
 }
@@ -98,6 +110,14 @@ bool _listEq<T>(List<T> a, List<T> b) {
   if (a.length != b.length) return false;
   for (var i = 0; i < a.length; i++) {
     if (a[i] != b[i]) return false;
+  }
+  return true;
+}
+
+bool _palettesEq(List<List<SwitchColor>> a, List<List<SwitchColor>> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (!_listEq(a[i], b[i])) return false;
   }
   return true;
 }

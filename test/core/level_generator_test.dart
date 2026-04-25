@@ -28,18 +28,32 @@ void main() {
     test('palette grows across early phases', () {
       final p1 = generator.generate(ColorSwitchParams.fromPhase(1));
       final p9 = generator.generate(ColorSwitchParams.fromPhase(9));
-      final colors1 = p1.ringQueue.toSet();
-      final colors9 = p9.ringQueue.toSet();
-      expect(colors1.length, lessThanOrEqualTo(2));
-      expect(colors9.length, greaterThanOrEqualTo(3));
+      expect(p1.ringPalettes.first.length, lessThanOrEqualTo(2));
+      expect(p9.ringPalettes.first.length, 4);
     });
 
     test('targetScore equals number of rings', () {
       final s = generator.generate(ColorSwitchParams.fromPhase(4));
-      expect(s.targetScore, s.ringQueue.length);
+      expect(s.targetScore, s.ringPalettes.length);
     });
 
-    test('state equality + hashCode work', () {
+    test('every ring palette contains the ball color it must match', () {
+      for (var phase = 1; phase <= 50; phase++) {
+        final s =
+            generator.generate(ColorSwitchParams.fromPhase(phase));
+        expect(s.ringPalettes.first.contains(s.ballColor), isTrue);
+        for (var i = 1; i < s.ringPalettes.length; i++) {
+          final expectedBall = s.nextBallStream[i - 1];
+          expect(
+            s.ringPalettes[i].contains(expectedBall),
+            isTrue,
+            reason: 'phase $phase ring $i must contain $expectedBall',
+          );
+        }
+      }
+    });
+
+    test('state equality + hashCode + isLost', () {
       final s = generator.generate(ColorSwitchParams.fromPhase(2));
       final clone = s.copyWith();
       expect(s, equals(clone));
@@ -49,6 +63,14 @@ void main() {
 
     test('SwitchColor enum has 4 entries', () {
       expect(SwitchColor.values.length, 4);
+    });
+
+    test('visibleRingColor returns null when palettes empty', () {
+      final s =
+          generator.generate(ColorSwitchParams.fromPhase(1)).copyWith(
+        ringPalettes: <List<SwitchColor>>[],
+      );
+      expect(s.visibleRingColor, isNull);
     });
   });
 }

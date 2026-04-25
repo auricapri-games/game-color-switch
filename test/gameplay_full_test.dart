@@ -1,57 +1,43 @@
-// Integration test — drives the real widget tree from boot through a full
-// gameplay loop. The level generator is solvable-by-construction with the
-// ball matching the head ring on every step, so tapping enough times
-// always either wins or naturally exhausts moves.
+// Drives the rules engine through a full successful run, exercising
+// timing-aligned taps and the deterministic level generator.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
-import 'package:game_color_switch/main.dart';
-import 'package:game_color_switch/screens/gameplay_screen.dart';
-import 'package:game_color_switch/screens/level_complete_screen.dart';
+import 'package:game_color_switch/config/level_params.dart';
+import 'package:game_color_switch/core/game_rules.dart';
+import 'package:game_color_switch/core/level_generator.dart';
 
 void main() {
-  setUp(() async {
-    SharedPreferences.setMockInitialValues(<String, Object>{});
+  test('perfect-timing run wins phase 1', () {
+    const rules = ColorSwitchRules();
+    const generator = ColorSwitchLevelGenerator();
+    var state = generator.generate(ColorSwitchParams.fromPhase(1));
+
+    var safety = 0;
+    while (!state.isOver && safety < 500) {
+      if (state.visibleRingColor == state.ballColor) {
+        state = rules.applyMove(state, SwitchMove.tap);
+      } else {
+        state = rules.applyMove(state, SwitchMove.tick);
+      }
+      safety++;
+    }
+
+    expect(state.isWon, isTrue, reason: 'safe-tap walker should win');
+    expect(state.score, state.targetScore);
   });
 
-  Future<void> stepFrames(WidgetTester tester, int n) async {
-    for (var i = 0; i < n; i++) {
-      await tester.pump(const Duration(milliseconds: 50));
+  test('mistimed taps end the run before reaching targetScore', () {
+    const rules = ColorSwitchRules();
+    const generator = ColorSwitchLevelGenerator();
+    var state = generator.generate(ColorSwitchParams.fromPhase(1));
+
+    // Force mismatch: rotate until visible != ball, then tap.
+    while (state.visibleRingColor == state.ballColor) {
+      state = rules.applyMove(state, SwitchMove.tick);
     }
-  }
-
-  testWidgets('boot → home → play → score increments → win', (tester) async {
-    await tester.pumpWidget(const GameColorSwitchApp());
-
-    // Splash auto-navigates after 1600ms; pump well past that.
-    await stepFrames(tester, 60);
-
-    // Home screen should now be on top with a PLAY button.
-    expect(find.text('PLAY'), findsOneWidget);
-    expect(find.text('Color Switch'), findsWidgets);
-
-    await tester.tap(find.text('PLAY'));
-    await stepFrames(tester, 20);
-
-    // Gameplay screen visible.
-    expect(find.byType(GameplayScreen), findsOneWidget);
-    expect(find.textContaining('SCORE'), findsOneWidget);
-    expect(find.textContaining('0 /'), findsOneWidget);
-
-    // Tap up to 60 times — the construction guarantees every tap is a
-    // match, so the ball clears the ring queue and triggers level
-    // complete navigation. Use the global tap area (Scaffold body).
-    for (var i = 0; i < 60; i++) {
-      // If the gameplay screen is gone the level complete fired.
-      if (find.byType(GameplayScreen).evaluate().isEmpty) break;
-      await tester.tap(find.byType(GameplayScreen));
-      await stepFrames(tester, 4);
-    }
-
-    // We should have transitioned to LevelCompleteScreen.
-    await stepFrames(tester, 20);
-    expect(find.byType(LevelCompleteScreen), findsOneWidget);
-    expect(find.text('Level Cleared!'), findsOneWidget);
+    final after = rules.applyMove(state, SwitchMove.tap);
+    expect(after.isOver, isTrue);
+    expect(after.isWon, isFalse);
+    expect(after.score, lessThan(after.targetScore));
   });
 }

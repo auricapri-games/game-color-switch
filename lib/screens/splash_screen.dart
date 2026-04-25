@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../ds/app_colors.dart';
@@ -15,6 +17,7 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
+  Timer? _navTimer;
 
   @override
   void initState() {
@@ -24,7 +27,7 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(milliseconds: 900),
     )..forward();
 
-    Future<void>.delayed(const Duration(milliseconds: 1600), () {
+    _navTimer = Timer(const Duration(milliseconds: 1600), () {
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
@@ -34,6 +37,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
+    _navTimer?.cancel();
     _ctrl.dispose();
     super.dispose();
   }

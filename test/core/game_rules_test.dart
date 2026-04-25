@@ -9,26 +9,40 @@ void main() {
     const rules = ColorSwitchRules();
     const generator = ColorSwitchLevelGenerator();
 
-    test('matching color advances ring queue and increments score', () {
-      final state = generator.generate(ColorSwitchParams.fromPhase(1));
-      expect(state.ballColor, state.ringQueue.first);
+    ColorSwitchState align(ColorSwitchState s) {
+      var c = s;
+      for (var i = 0; i < 16; i++) {
+        if (c.visibleRingColor == c.ballColor) return c;
+        c = rules.applyMove(c, SwitchMove.tick);
+      }
+      return c;
+    }
 
+    test('matching color advances ring queue and increments score', () {
+      final state = align(generator.generate(ColorSwitchParams.fromPhase(1)));
       final after = rules.applyMove(state, SwitchMove.tap);
       expect(after.score, 1);
       expect(after.movesUsed, 1);
-      expect(after.ringQueue.length, state.ringQueue.length - 1);
+      expect(after.ringsRemaining, state.ringsRemaining - 1);
       expect(after.isOver, isFalse);
     });
 
     test('mismatch triggers immediate game over with isWon=false', () {
       final base = generator.generate(ColorSwitchParams.fromPhase(1));
-      // Force a mismatch by recoloring the ball to anything not equal to head.
       final wrongColor = SwitchColor.values.firstWhere(
-        (c) => c != base.ringQueue.first,
+        (c) =>
+            c != base.visibleRingColor &&
+            base.ringPalettes.first.contains(c),
+        orElse: () => SwitchColor.values.firstWhere(
+          (c) => c != base.visibleRingColor,
+        ),
       );
-      final mismatched = base.copyWith(ballColor: wrongColor);
-
-      final after = rules.applyMove(mismatched, SwitchMove.tap);
+      // Rotate the ring until visible != ballColor and visible != wrongColor.
+      var s = base.copyWith(ballColor: wrongColor);
+      while (s.visibleRingColor == s.ballColor) {
+        s = rules.applyMove(s, SwitchMove.tick);
+      }
+      final after = rules.applyMove(s, SwitchMove.tap);
       expect(after.isOver, isTrue);
       expect(after.isWon, isFalse);
       expect(after.score, 0);
@@ -36,23 +50,38 @@ void main() {
 
     test('clearing every ring marks the level won', () {
       var state = generator.generate(ColorSwitchParams.fromPhase(1));
-      while (!state.isOver) {
-        state = rules.applyMove(state, SwitchMove.tap);
+      var safety = 0;
+      while (!state.isOver && safety < 200) {
+        if (state.visibleRingColor == state.ballColor) {
+          state = rules.applyMove(state, SwitchMove.tap);
+        } else {
+          state = rules.applyMove(state, SwitchMove.tick);
+        }
+        safety++;
       }
       expect(state.isWon, isTrue);
       expect(state.score, state.targetScore);
-      expect(state.ringQueue, isEmpty);
+      expect(state.ringPalettes, isEmpty);
     });
 
     test('isLegal is false once over', () {
       var state = generator.generate(ColorSwitchParams.fromPhase(1));
-      while (!state.isOver) {
-        state = rules.applyMove(state, SwitchMove.tap);
+      var safety = 0;
+      while (!state.isOver && safety < 200) {
+        state = state.visibleRingColor == state.ballColor
+            ? rules.applyMove(state, SwitchMove.tap)
+            : rules.applyMove(state, SwitchMove.tick);
+        safety++;
       }
       expect(rules.isLegal(state, SwitchMove.tap), isFalse);
-      // Applying after over is a no-op.
       final same = rules.applyMove(state, SwitchMove.tap);
       expect(same, equals(state));
+    });
+
+    test('tick rotates the visible color', () {
+      final initial = generator.generate(ColorSwitchParams.fromPhase(1));
+      final ticked = rules.applyMove(initial, SwitchMove.tick);
+      expect(ticked.rotationIndex, initial.rotationIndex + 1);
     });
   });
 }

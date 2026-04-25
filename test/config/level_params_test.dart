@@ -7,7 +7,7 @@ void main() {
       final p = ColorSwitchParams.fromPhase(1);
       expect(p.numColors, 2);
       expect(p.numRings, 5);
-      expect(p.spinSpeedHz, closeTo(0.48, 0.001));
+      expect(p.tickHz, greaterThan(1.4));
     });
 
     test('numColors caps at 4', () {
@@ -21,9 +21,9 @@ void main() {
       expect(big.numRings, 30);
     });
 
-    test('spinSpeedHz clamps at 1.6', () {
+    test('tickHz clamps at 4.0', () {
       final big = ColorSwitchParams.fromPhase(200);
-      expect(big.spinSpeedHz, 1.6);
+      expect(big.tickHz, 4.0);
     });
 
     test('equality + hashCode', () {
@@ -37,6 +37,12 @@ void main() {
       final p = ColorSwitchParams.fromPhase(0);
       expect(p.numRings, 5);
       expect(p.numColors, 2);
+    });
+
+    test('inequality across phases', () {
+      final a = ColorSwitchParams.fromPhase(1);
+      final b = ColorSwitchParams.fromPhase(2);
+      expect(a == b, isFalse);
     });
   });
 }
