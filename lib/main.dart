@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'ds/app_theme.dart';
-import 'screens/splash_screen.dart';
+import 'ds/app_colors.dart';
 
 void main() {
   runApp(const GameColorSwitchApp());
@@ -14,9 +13,20 @@ class GameColorSwitchApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Color Switch',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.build(),
-      home: const SplashScreen(),
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
+        scaffoldBackgroundColor: AppColors.background,
+        useMaterial3: true,
+      ),
+      home: const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: Text(
+            'Color Switch — building...',
+            style: TextStyle(color: AppColors.text, fontSize: 22),
+          ),
+        ),
+      ),
     );
   }
 }
