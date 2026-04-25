@@ -5,11 +5,9 @@
 
 ## Sprites required
 
-- ball.png 40x40 white
-- ring_red.png 200x200 ring
-- ring_blue.png 200x200 ring
-- ring_green.png 200x200 ring
-- ring_yellow.png 200x200 ring
+- ball.png 40x40 colored ball (will tint at runtime)
+- ring_segmented_4colors.png 240x240 4-segment ring transparent inside
+- color_switch.png 30x30 small cross-shaped switch with 4 colors
 
 ## How to generate
 
